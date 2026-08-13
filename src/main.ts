@@ -13,6 +13,11 @@ try {
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
+  // Necessaire pour Expo web (navigateur, soumis a CORS), pas pour les
+  // cibles natives (Android emulateur/telephone). Ouvert en dev ; a
+  // restreindre a des origines connues avant tout deploiement.
+  app.enableCors();
+
   app.setGlobalPrefix('api');
 
   app.useGlobalPipes(
