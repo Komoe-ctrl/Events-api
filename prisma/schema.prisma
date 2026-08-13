@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum RoleUtilisateur {
+  PARTICIPANT
+  ORGANISATEUR
+  ADMIN
+}
+
+enum CategorieEvenement {
+  CONCERT
+  SOIREE
+  CONFERENCE
+  SPORT
+  CULTURE
+  RELIGIEUX
+}
+
+enum StatutEvenement {
+  BROUILLON
+  EN_ATTENTE
+  PUBLIE
+  REFUSE
+}
+
+enum StatutReservation {
+  CONFIRMEE
+  ANNULEE
+  UTILISEE
+}
+
+model Utilisateur {
+  id             String          @id @default(cuid())
+  nom            String
+  telephone      String          @unique
+  email          String?         @unique
+  motDePasseHash String
+  role           RoleUtilisateur @default(PARTICIPANT)
+  createdAt      DateTime        @default(now())
+
+  evenements   Evenement[]
+  reservations Reservation[]
+}
+
+model Evenement {
+  id                  String             @id @default(cuid())
+  titre               String
+  slug                String             @unique
+  description         String
+  image               String
+  categorie           CategorieEvenement
+  dateDebut           DateTime
+  dateFin             DateTime?
+  prix                Int?
+  capacite            Int?
+  latitude            Float
+  longitude           Float
+  adresse             String
+  commune             String
+  statut              StatutEvenement    @default(BROUILLON)
+  motifRefus          String?
+  organisateurId      String
+  contactOrganisateur String
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  organisateur Utilisateur   @relation(fields: [organisateurId], references: [id], onDelete: Restrict)
+  reservations Reservation[]
+
+  // Bounding box pour la recherche geolocalisee (regle de domaine n.1) : filtre
+  // par plage lat/lng avant le calcul haversine en $queryRaw.
+  @@index([latitude, longitude])
+  // File de moderation (statut = EN_ATTENTE) et listing public (statut = PUBLIE),
+  // tries/filtres par date dans les deux cas.
+  @@index([statut, dateDebut])
+  // GET /moi/evenements : toutes les publications d'un organisateur, tous statuts.
+  @@index([organisateurId])
+}
+
+model Reservation {
+  id            String            @id @default(cuid())
+  evenementId   String
+  utilisateurId String
+  nombrePlaces  Int               @default(1)
+  code          String            @unique
+  statut        StatutReservation @default(CONFIRMEE)
+  createdAt     DateTime          @default(now())
+  utiliseeLe    DateTime?
+
+  evenement   Evenement   @relation(fields: [evenementId], references: [id], onDelete: Restrict)
+  utilisateur Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Restrict)
+  // NOTE : la regle "une seule reservation active par utilisateur et par evenement"
+  // (regle de domaine n.4) n'est PAS entierement portee par ce schema. Prisma ne
+  // sait pas exprimer d'index unique partiel (WHERE ...). Elle sera ajoutee a la
+  // main dans la migration generee :
+  //   CREATE UNIQUE INDEX reservation_active_unique
+  //     ON "Reservation" ("evenementId", "utilisateurId")
+  //     WHERE statut IN ('CONFIRMEE', 'UTILISEE');
+  // Voir l'explication complete dans la conversation au moment de la migration.
+
+  // GET /moi/reservations
+  @@index([utilisateurId])
+  // Verification de capacite dans la transaction de reservation (regle n.3)
+  @@index([evenementId, statut])
+}
