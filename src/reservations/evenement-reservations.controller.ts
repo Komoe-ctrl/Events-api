@@ -37,7 +37,8 @@ export class EvenementReservationsController {
 
   @Get()
   @ApiOperation({
-    summary: "Liste des inscrits, reservee au proprietaire de l'evenement (ou admin)",
+    summary:
+      "Liste des inscrits, reservee au proprietaire de l'evenement (ou admin)",
   })
   @ApiOkResponse({ type: [ReservationOrganisateurDto] })
   inscrits(
