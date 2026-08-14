@@ -1,7 +1,9 @@
 import { randomBytes } from 'node:crypto';
 
-// Exclut 0/O, 1/I/L : ambigus a la lecture ou en saisie manuelle a l'entree.
-const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+// Exclut les paires ambigues a la lecture ou en saisie manuelle a l'entree,
+// notamment dans une police condensee non monospace (titres Anton, cote
+// mobile) : 0/O, 1/I/L, 8/B, 5/S, 2/Z.
+const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ34679';
 const LONGUEUR = 8;
 
 /** Code court et lisible, sert de contenu au QR code du billet. */
