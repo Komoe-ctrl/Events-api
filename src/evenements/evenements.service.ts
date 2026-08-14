@@ -85,7 +85,9 @@ export class EvenementsService {
       by: ['evenementId'],
       where: {
         evenementId: { in: evenements.map((e) => e.id) },
-        statut: { in: [StatutReservation.CONFIRMEE, StatutReservation.UTILISEE] },
+        statut: {
+          in: [StatutReservation.CONFIRMEE, StatutReservation.UTILISEE],
+        },
       },
       _sum: { nombrePlaces: true },
     });
@@ -99,7 +101,8 @@ export class EvenementsService {
           ? null
           : Math.max(
               0,
-              evenement.capacite - (placesPrisesParEvenement.get(evenement.id) ?? 0),
+              evenement.capacite -
+                (placesPrisesParEvenement.get(evenement.id) ?? 0),
             ),
     }));
   }
@@ -146,7 +149,9 @@ export class EvenementsService {
     `;
   }
 
-  async trouverPublicParId(id: string): Promise<AvecPlacesRestantes<Evenement>> {
+  async trouverPublicParId(
+    id: string,
+  ): Promise<AvecPlacesRestantes<Evenement>> {
     const evenement = await this.prisma.evenement.findUnique({ where: { id } });
     if (!evenement || evenement.statut !== StatutEvenement.PUBLIE) {
       throw new NotFoundException('Evenement introuvable.');

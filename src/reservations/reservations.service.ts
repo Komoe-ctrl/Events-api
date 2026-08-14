@@ -61,7 +61,9 @@ export class ReservationsService {
         const agregat = await tx.reservation.aggregate({
           where: {
             evenementId,
-            statut: { in: [StatutReservation.CONFIRMEE, StatutReservation.UTILISEE] },
+            statut: {
+              in: [StatutReservation.CONFIRMEE, StatutReservation.UTILISEE],
+            },
           },
           _sum: { nombrePlaces: true },
         });
@@ -91,7 +93,9 @@ export class ReservationsService {
   }
 
   async annuler(id: string, utilisateurId: string): Promise<Reservation> {
-    const reservation = await this.prisma.reservation.findUnique({ where: { id } });
+    const reservation = await this.prisma.reservation.findUnique({
+      where: { id },
+    });
     if (!reservation) {
       throw new NotFoundException('Reservation introuvable.');
     }
@@ -124,10 +128,13 @@ export class ReservationsService {
     if (!reservation) {
       throw new NotFoundException('Code de reservation introuvable.');
     }
-    const estProprietaire = reservation.evenement.organisateurId === utilisateur.id;
+    const estProprietaire =
+      reservation.evenement.organisateurId === utilisateur.id;
     const estAdmin = utilisateur.role === 'ADMIN';
     if (!estProprietaire && !estAdmin) {
-      throw new ForbiddenException("Vous n'etes pas l'organisateur de cet evenement.");
+      throw new ForbiddenException(
+        "Vous n'etes pas l'organisateur de cet evenement.",
+      );
     }
     if (reservation.statut === StatutReservation.UTILISEE) {
       throw new ErreurMetier(
@@ -170,9 +177,14 @@ export class ReservationsService {
   }
 
   private convertirErreurUnicite(erreur: unknown): never {
-    if (erreur instanceof Prisma.PrismaClientKnownRequestError && erreur.code === 'P2002') {
+    if (
+      erreur instanceof Prisma.PrismaClientKnownRequestError &&
+      erreur.code === 'P2002'
+    ) {
       const cible = erreur.meta?.target;
-      const cibleTexte = Array.isArray(cible) ? cible.join(',') : String(cible ?? '');
+      const cibleTexte = Array.isArray(cible)
+        ? cible.join(',')
+        : String(cible ?? '');
       if (cibleTexte.includes('code')) {
         throw new ErreurMetier(
           'CODE_RESERVATION_COLLISION',
