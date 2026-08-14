@@ -15,7 +15,9 @@ import { JwtStrategy } from './strategies/jwt.strategy';
         // est charge avant que l'env soit peuplee.
         const secret = process.env.JWT_SECRET;
         if (!secret) {
-          throw new Error('JWT_SECRET manquant dans les variables environnement.');
+          throw new Error(
+            'JWT_SECRET manquant dans les variables environnement.',
+          );
         }
         return { secret, signOptions: { expiresIn: '30d' } };
       },

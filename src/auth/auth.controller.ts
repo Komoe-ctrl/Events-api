@@ -19,7 +19,9 @@ export class AuthController {
 
   @Post('connexion')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Authentifie un utilisateur par telephone + mot de passe' })
+  @ApiOperation({
+    summary: 'Authentifie un utilisateur par telephone + mot de passe',
+  })
   @ApiOkResponse({ type: ReponseAuthDto })
   connexion(@Body() dto: ConnexionDto): Promise<ReponseAuthDto> {
     return this.authService.connexion(dto);

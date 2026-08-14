@@ -25,7 +25,7 @@ export class CreerEvenementDto {
   @IsNotEmpty()
   description!: string;
 
-  @ApiProperty({ description: 'URL de l\'image de couverture' })
+  @ApiProperty({ description: "URL de l'image de couverture" })
   @IsString()
   @IsNotEmpty()
   image!: string;

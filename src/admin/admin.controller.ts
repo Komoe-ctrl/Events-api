@@ -1,5 +1,10 @@
 import { Body, Controller, Get, Param, Patch, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { RoleUtilisateur } from '../../generated/prisma/client';
 import { EvenementPublicDto } from '../evenements/dto/evenement-public.dto';
 import { Roles } from '../common/decorators/roles.decorator';

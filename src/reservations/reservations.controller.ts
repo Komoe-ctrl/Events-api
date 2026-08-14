@@ -1,5 +1,17 @@
-import { Body, Controller, Delete, Param, Post, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Delete,
+  Param,
+  Post,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { RoleUtilisateur } from '../../generated/prisma/client';
 import { Roles } from '../common/decorators/roles.decorator';
 import {
@@ -33,7 +45,9 @@ export class ReservationsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleUtilisateur.ORGANISATEUR, RoleUtilisateur.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: "Scan a l'entree : marque une reservation comme utilisee" })
+  @ApiOperation({
+    summary: "Scan a l'entree : marque une reservation comme utilisee",
+  })
   @ApiOkResponse({ type: ReservationPubliqueDto })
   valider(
     @Body() dto: ValiderReservationDto,
