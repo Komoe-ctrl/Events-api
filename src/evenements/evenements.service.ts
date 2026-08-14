@@ -1,8 +1,14 @@
-import { ForbiddenException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  HttpStatus,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import {
   type Evenement,
   Prisma,
   StatutEvenement,
+  StatutReservation,
 } from '../../generated/prisma/client';
 import { ErreurMetier } from '../common/exceptions/erreur-metier.exception';
 import { genererSlug } from '../common/utils/slug';
@@ -19,11 +25,15 @@ export interface EvenementAvecDistance extends Evenement {
   distanceKm: number;
 }
 
+type AvecPlacesRestantes<T> = T & { placesRestantes: number | null };
+
 @Injectable()
 export class EvenementsService {
   constructor(private readonly prisma: PrismaService) {}
 
-  rechercher(filtres: RechercherEvenementsDto): Promise<Evenement[] | EvenementAvecDistance[]> {
+  async rechercher(
+    filtres: RechercherEvenementsDto,
+  ): Promise<AvecPlacesRestantes<Evenement | EvenementAvecDistance>[]> {
     if ((filtres.lat === undefined) !== (filtres.lng === undefined)) {
       throw new ErreurMetier(
         'PARAMETRES_INVALIDES',
@@ -33,10 +43,15 @@ export class EvenementsService {
     }
 
     if (filtres.lat !== undefined && filtres.lng !== undefined) {
-      return this.rechercherParDistance(filtres, filtres.lat, filtres.lng);
+      const resultats = await this.rechercherParDistance(
+        filtres,
+        filtres.lat,
+        filtres.lng,
+      );
+      return this.avecPlacesRestantes(resultats);
     }
 
-    return this.prisma.evenement.findMany({
+    const resultats = await this.prisma.evenement.findMany({
       where: {
         statut: StatutEvenement.PUBLIE,
         categorie: filtres.categorie,
@@ -48,6 +63,45 @@ export class EvenementsService {
       orderBy: { dateDebut: 'asc' },
       take: LIMITE_RESULTATS,
     });
+    return this.avecPlacesRestantes(resultats);
+  }
+
+  /**
+   * Complete chaque evenement avec placesRestantes = capacite - SUM(nombrePlaces)
+   * des reservations CONFIRMEE/UTILISEE (meme definition que la verification
+   * de capacite dans ReservationsService.creer()). null = illimite. Calcule
+   * en JS via un groupBy plutot que dans la requete haversine en $queryRaw
+   * (regle de domaine n.1) pour ne pas complexifier davantage cette requete
+   * deja denses ; le cout supplementaire est un aggregat sur un nombre
+   * d'identifiants deja borne par LIMITE_RESULTATS.
+   */
+  private async avecPlacesRestantes<T extends Evenement>(
+    evenements: T[],
+  ): Promise<AvecPlacesRestantes<T>[]> {
+    if (evenements.length === 0) {
+      return [];
+    }
+    const agregats = await this.prisma.reservation.groupBy({
+      by: ['evenementId'],
+      where: {
+        evenementId: { in: evenements.map((e) => e.id) },
+        statut: { in: [StatutReservation.CONFIRMEE, StatutReservation.UTILISEE] },
+      },
+      _sum: { nombrePlaces: true },
+    });
+    const placesPrisesParEvenement = new Map(
+      agregats.map((a) => [a.evenementId, a._sum.nombrePlaces ?? 0]),
+    );
+    return evenements.map((evenement) => ({
+      ...evenement,
+      placesRestantes:
+        evenement.capacite === null
+          ? null
+          : Math.max(
+              0,
+              evenement.capacite - (placesPrisesParEvenement.get(evenement.id) ?? 0),
+            ),
+    }));
   }
 
   private rechercherParDistance(
@@ -58,7 +112,8 @@ export class EvenementsService {
     const rayonKm = filtres.rayonKm ?? RAYON_KM_DEFAUT;
 
     const deltaLat = rayonKm / KM_PAR_DEGRE_LATITUDE;
-    const deltaLng = rayonKm / (KM_PAR_DEGRE_LATITUDE * Math.cos((lat * Math.PI) / 180));
+    const deltaLng =
+      rayonKm / (KM_PAR_DEGRE_LATITUDE * Math.cos((lat * Math.PI) / 180));
 
     const latMin = lat - deltaLat;
     const latMax = lat + deltaLat;
@@ -91,12 +146,13 @@ export class EvenementsService {
     `;
   }
 
-  async trouverPublicParId(id: string): Promise<Evenement> {
+  async trouverPublicParId(id: string): Promise<AvecPlacesRestantes<Evenement>> {
     const evenement = await this.prisma.evenement.findUnique({ where: { id } });
     if (!evenement || evenement.statut !== StatutEvenement.PUBLIE) {
       throw new NotFoundException('Evenement introuvable.');
     }
-    return evenement;
+    const [resultat] = await this.avecPlacesRestantes([evenement]);
+    return resultat;
   }
 
   mesEvenements(organisateurId: string): Promise<Evenement[]> {
@@ -138,13 +194,18 @@ export class EvenementsService {
       throw new NotFoundException('Evenement introuvable.');
     }
     if (evenement.organisateurId !== utilisateurId) {
-      throw new ForbiddenException("Vous n'etes pas proprietaire de cet evenement.");
+      throw new ForbiddenException(
+        "Vous n'etes pas proprietaire de cet evenement.",
+      );
     }
 
     const { statut: statutDemande, ...champs } = dto;
     const donnees: Prisma.EvenementUpdateInput = { ...champs };
 
-    if (evenement.statut === StatutEvenement.PUBLIE || evenement.statut === StatutEvenement.REFUSE) {
+    if (
+      evenement.statut === StatutEvenement.PUBLIE ||
+      evenement.statut === StatutEvenement.REFUSE
+    ) {
       // Toute modification d'un evenement publie ou refuse relance la moderation :
       // "rien n'est visible publiquement avant validation par un administrateur"
       // s'applique aussi aux changements apres coup, pas seulement a la premiere soumission.
