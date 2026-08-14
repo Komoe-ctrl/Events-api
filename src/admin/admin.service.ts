@@ -38,7 +38,10 @@ export class AdminService {
     return this.prisma.evenement.update({
       where: { id },
       data: {
-        statut: dto.statut === 'PUBLIE' ? StatutEvenement.PUBLIE : StatutEvenement.REFUSE,
+        statut:
+          dto.statut === 'PUBLIE'
+            ? StatutEvenement.PUBLIE
+            : StatutEvenement.REFUSE,
         motifRefus: dto.statut === 'REFUSE' ? dto.motifRefus : null,
       },
     });

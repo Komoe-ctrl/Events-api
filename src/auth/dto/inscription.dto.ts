@@ -35,10 +35,15 @@ export class InscriptionDto {
 
   @ApiProperty({ minLength: 8, example: 'motdepasse123' })
   @IsString()
-  @MinLength(8, { message: 'Le mot de passe doit contenir au moins 8 caracteres.' })
+  @MinLength(8, {
+    message: 'Le mot de passe doit contenir au moins 8 caracteres.',
+  })
   motDePasse!: string;
 
-  @ApiPropertyOptional({ enum: ROLES_INSCRIPTIBLES, default: RoleUtilisateur.PARTICIPANT })
+  @ApiPropertyOptional({
+    enum: ROLES_INSCRIPTIBLES,
+    default: RoleUtilisateur.PARTICIPANT,
+  })
   @IsOptional()
   @IsIn(ROLES_INSCRIPTIBLES, { message: 'Role invalide.' })
   role?: RoleInscriptible;

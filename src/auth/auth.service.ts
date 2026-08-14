@@ -2,7 +2,11 @@ import { HttpStatus, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 import { ErreurMetier } from '../common/exceptions/erreur-metier.exception';
-import { Prisma, RoleUtilisateur, type Utilisateur } from '../../generated/prisma/client';
+import {
+  Prisma,
+  RoleUtilisateur,
+  type Utilisateur,
+} from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { ConnexionDto } from './dto/connexion.dto';
 import { InscriptionDto } from './dto/inscription.dto';
@@ -42,7 +46,8 @@ export class AuthService {
     });
 
     const motDePasseValide =
-      utilisateur !== null && (await argon2.verify(utilisateur.motDePasseHash, dto.motDePasse));
+      utilisateur !== null &&
+      (await argon2.verify(utilisateur.motDePasseHash, dto.motDePasse));
 
     if (!motDePasseValide || utilisateur === null) {
       throw new ErreurMetier(
@@ -76,7 +81,10 @@ export class AuthService {
   }
 
   private convertirErreurUnicite(erreur: unknown): never {
-    if (erreur instanceof Prisma.PrismaClientKnownRequestError && erreur.code === 'P2002') {
+    if (
+      erreur instanceof Prisma.PrismaClientKnownRequestError &&
+      erreur.code === 'P2002'
+    ) {
       const cibles = erreur.meta?.target;
       const champs = Array.isArray(cibles) ? cibles : [];
       if (champs.includes('telephone')) {

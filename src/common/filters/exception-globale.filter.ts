@@ -25,9 +25,12 @@ export class ExceptionGlobaleFilter implements ExceptionFilter {
     const response = host.switchToHttp().getResponse<Response>();
 
     if (exception instanceof ErreurMetier) {
-      response
-        .status(exception.getStatus())
-        .json({ erreur: { code: exception.code, message: exception.messageUtilisateur } });
+      response.status(exception.getStatus()).json({
+        erreur: {
+          code: exception.code,
+          message: exception.messageUtilisateur,
+        },
+      });
       return;
     }
 
