@@ -185,6 +185,14 @@ export class EvenementsService {
         commune: dto.commune,
         contactOrganisateur: dto.contactOrganisateur,
         organisateurId,
+        // CLAUDE.md : "Toute publication est moderee : rien n'est visible
+        // publiquement avant validation par un administrateur." Ca suppose
+        // qu'un administrateur PUISSE la voir pour la valider — sans ce
+        // champ explicite, Prisma applique le defaut du schema (BROUILLON),
+        // invisible dans la file de moderation (AdminService.fileDeModeration
+        // ne lit que EN_ATTENTE). L'evenement ne serait alors jamais
+        // modere, orphelin en permanence.
+        statut: StatutEvenement.EN_ATTENTE,
       },
     });
   }
