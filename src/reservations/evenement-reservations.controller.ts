@@ -1,4 +1,4 @@
-import { Body, Controller, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
 import {
   ApiBearerAuth,
   ApiOkResponse,
@@ -11,6 +11,7 @@ import {
 } from '../common/decorators/utilisateur-actuel.decorator';
 import { JwtAuthGuard } from '../common/guards/jwt-auth.guard';
 import { CreerReservationDto } from './dto/creer-reservation.dto';
+import { ReservationOrganisateurDto } from './dto/reservation-organisateur.dto';
 import { ReservationPubliqueDto } from './dto/reservation-publique.dto';
 import { ReservationsService } from './reservations.service';
 
@@ -32,5 +33,17 @@ export class EvenementReservationsController {
     @UtilisateurActuel() utilisateur: UtilisateurAuthentifie,
   ) {
     return this.reservationsService.creer(evenementId, dto, utilisateur.id);
+  }
+
+  @Get()
+  @ApiOperation({
+    summary: "Liste des inscrits, reservee au proprietaire de l'evenement (ou admin)",
+  })
+  @ApiOkResponse({ type: [ReservationOrganisateurDto] })
+  inscrits(
+    @Param('id') evenementId: string,
+    @UtilisateurActuel() utilisateur: UtilisateurAuthentifie,
+  ) {
+    return this.reservationsService.inscrits(evenementId, utilisateur);
   }
 }

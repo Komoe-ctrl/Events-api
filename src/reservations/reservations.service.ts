@@ -157,6 +157,32 @@ export class ReservationsService {
     });
   }
 
+  /** Liste des inscrits d'un evenement, pour son organisateur (ou un admin). */
+  async inscrits(evenementId: string, utilisateur: UtilisateurAuthentifie) {
+    const evenement = await this.prisma.evenement.findUnique({
+      where: { id: evenementId },
+      select: { organisateurId: true },
+    });
+    if (!evenement) {
+      throw new NotFoundException('Evenement introuvable.');
+    }
+    const estProprietaire = evenement.organisateurId === utilisateur.id;
+    const estAdmin = utilisateur.role === 'ADMIN';
+    if (!estProprietaire && !estAdmin) {
+      throw new ForbiddenException(
+        "Vous n'etes pas l'organisateur de cet evenement.",
+      );
+    }
+
+    return this.prisma.reservation.findMany({
+      where: { evenementId },
+      orderBy: { createdAt: 'asc' },
+      include: {
+        utilisateur: { select: { nom: true, telephone: true } },
+      },
+    });
+  }
+
   mesReservations(utilisateurId: string) {
     return this.prisma.reservation.findMany({
       where: { utilisateurId },
