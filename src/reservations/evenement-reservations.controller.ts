@@ -1,5 +1,10 @@
 import { Body, Controller, Param, Post, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import {
   UtilisateurActuel,
   type UtilisateurAuthentifie,
@@ -17,7 +22,9 @@ export class EvenementReservationsController {
   constructor(private readonly reservationsService: ReservationsService) {}
 
   @Post()
-  @ApiOperation({ summary: 'Reserve une ou plusieurs places sur un evenement publie' })
+  @ApiOperation({
+    summary: 'Reserve une ou plusieurs places sur un evenement publie',
+  })
   @ApiOkResponse({ type: ReservationPubliqueDto })
   creer(
     @Param('id') evenementId: string,

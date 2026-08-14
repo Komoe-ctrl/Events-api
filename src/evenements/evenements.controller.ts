@@ -1,5 +1,19 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
-import { ApiBearerAuth, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Query,
+  UseGuards,
+} from '@nestjs/common';
+import {
+  ApiBearerAuth,
+  ApiOkResponse,
+  ApiOperation,
+  ApiTags,
+} from '@nestjs/swagger';
 import { RoleUtilisateur } from '../../generated/prisma/client';
 import { Roles } from '../common/decorators/roles.decorator';
 import {
@@ -21,7 +35,8 @@ export class EvenementsController {
 
   @Get()
   @ApiOperation({
-    summary: 'Recherche des evenements publies, tries par distance si lat/lng fournis',
+    summary:
+      'Recherche des evenements publies, tries par distance si lat/lng fournis',
   })
   @ApiOkResponse({ type: [EvenementPublicDto] })
   rechercher(@Query() filtres: RechercherEvenementsDto) {
@@ -39,7 +54,9 @@ export class EvenementsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(RoleUtilisateur.ORGANISATEUR, RoleUtilisateur.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Cree un evenement en brouillon (organisateur ou admin)' })
+  @ApiOperation({
+    summary: 'Cree un evenement en brouillon (organisateur ou admin)',
+  })
   @ApiOkResponse({ type: EvenementPublicDto })
   creer(
     @Body() dto: CreerEvenementDto,

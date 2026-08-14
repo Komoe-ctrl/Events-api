@@ -13,7 +13,9 @@ export interface UtilisateurAuthentifie {
 
 export const UtilisateurActuel = createParamDecorator(
   (donnee: keyof UtilisateurAuthentifie | undefined, ctx: ExecutionContext) => {
-    const request = ctx.switchToHttp().getRequest<{ user: UtilisateurAuthentifie }>();
+    const request = ctx
+      .switchToHttp()
+      .getRequest<{ user: UtilisateurAuthentifie }>();
     return donnee ? request.user[donnee] : request.user;
   },
 );
