@@ -1,4 +1,4 @@
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
@@ -46,4 +46,16 @@ async function bootstrap() {
 
   await app.listen(process.env.PORT ?? 3000);
 }
-bootstrap();
+bootstrap().catch((erreur: unknown) => {
+  // Sans ce .catch, un echec de demarrage (port deja pris, DATABASE_URL
+  // invalide, JWT_SECRET manquant...) rejette une promesse non geree :
+  // Node journalise un avertissement generique et le process peut rester
+  // bloque sans jamais vraiment demarrer ni sortir clairement en erreur —
+  // ingerable en production, ou seul le code de sortie du process est
+  // observable par l'orchestrateur (systemd, Docker, etc.).
+  new Logger('Bootstrap').error(
+    "Echec du demarrage de l'application",
+    erreur instanceof Error ? erreur.stack : String(erreur),
+  );
+  process.exit(1);
+});
