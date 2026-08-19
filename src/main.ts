@@ -16,6 +16,9 @@ async function bootstrap() {
   // Necessaire pour Expo web (navigateur, soumis a CORS), pas pour les
   // cibles natives (Android emulateur/telephone). Ouvert en dev ; a
   // restreindre a des origines connues avant tout deploiement.
+  // TODO(deploiement) : restreindre via { origin: [...] } aux domaines reels
+  // (app web + admin) avant toute mise en production — releve lors de
+  // l'inventaire de confidentialite, actuellement ouvert a toute origine.
   app.enableCors();
 
   app.setGlobalPrefix('api');
