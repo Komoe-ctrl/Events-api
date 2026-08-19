@@ -40,13 +40,36 @@ model Utilisateur {
   id             String          @id @default(cuid())
   nom            String
   telephone      String          @unique
-  email          String?         @unique
+  email          String          @unique
   motDePasseHash String
   role           RoleUtilisateur @default(PARTICIPANT)
   createdAt      DateTime        @default(now())
 
-  evenements   Evenement[]
-  reservations Reservation[]
+  evenements             Evenement[]
+  reservations           Reservation[]
+  tokensReinitialisation TokenReinitialisation[]
+}
+
+// Jeton de reinitialisation de mot de passe. Interne a l'API, jamais
+// serialise vers le mobile — ne fait pas partie du contrat de donnees
+// partage (CLAUDE.md), contrairement a Utilisateur/Evenement/Reservation.
+model TokenReinitialisation {
+  id            String    @id @default(cuid())
+  utilisateurId String
+  // Hash SHA-256 du jeton, jamais le jeton en clair (regle de domaine :
+  // securite). Rapide plutot qu'argon2 : le jeton est une valeur aleatoire
+  // a haute entropie generee par le serveur, pas un mot de passe choisi par
+  // un humain — pas besoin d'un hachage lent pour resister au brute-force.
+  tokenHash String    @unique
+  expireLe  DateTime
+  utiliseLe DateTime?
+  createdAt DateTime  @default(now())
+
+  utilisateur Utilisateur @relation(fields: [utilisateurId], references: [id], onDelete: Cascade)
+
+  // Compte les demandes recentes d'un utilisateur (limitation des
+  // tentatives) et retrouve/invalide ses jetons non utilises.
+  @@index([utilisateurId])
 }
 
 model Evenement {

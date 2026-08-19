@@ -5,7 +5,7 @@ export class UtilisateurPublicDto {
   @ApiProperty() id!: string;
   @ApiProperty() nom!: string;
   @ApiProperty() telephone!: string;
-  @ApiProperty({ nullable: true, type: String }) email!: string | null;
+  @ApiProperty() email!: string;
   @ApiProperty({ enum: RoleUtilisateur }) role!: RoleUtilisateur;
   @ApiProperty() createdAt!: Date;
 }
