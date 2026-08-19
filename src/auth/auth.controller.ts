@@ -35,7 +35,7 @@ export class AuthController {
   @ApiOperation({
     summary:
       'Demande un lien de reinitialisation de mot de passe par email. ' +
-      'Reponse identique que l\'adresse corresponde a un compte ou non.',
+      "Reponse identique que l'adresse corresponde a un compte ou non.",
   })
   @ApiOkResponse({ type: ReponseGeneriqueDto })
   demanderReinitialisation(
@@ -46,7 +46,9 @@ export class AuthController {
 
   @Post('mot-de-passe-reinitialisation')
   @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Confirme la reinitialisation avec le jeton recu par email' })
+  @ApiOperation({
+    summary: 'Confirme la reinitialisation avec le jeton recu par email',
+  })
   @ApiOkResponse({ type: ReponseGeneriqueDto })
   reinitialiserMotDePasse(
     @Body() dto: ConfirmerReinitialisationDto,
