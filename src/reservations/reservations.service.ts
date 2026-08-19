@@ -207,17 +207,25 @@ export class ReservationsService {
       erreur instanceof Prisma.PrismaClientKnownRequestError &&
       erreur.code === 'P2002'
     ) {
-      const cible = erreur.meta?.target;
-      const cibleTexte = Array.isArray(cible)
-        ? cible.join(',')
-        : String(cible ?? '');
-      if (cibleTexte.includes('code')) {
+      // erreur.meta.target n'existe jamais avec @prisma/adapter-pg (verifie
+      // empiriquement en declenchant une vraie violation) : String(cible)
+      // valait donc toujours "" et CODE_RESERVATION_COLLISION n'etait
+      // jamais atteignable, quelle que soit la contrainte violee — bug
+      // reel derriere l'avertissement eslint, pas juste un style a
+      // corriger. Le nom de la contrainte n'apparait que dans le message
+      // Postgres brut, imbrique dans driverAdapterError.cause.
+      const contrainte = this.contrainteViolee(erreur.meta);
+      if (contrainte === 'Reservation_code_key') {
         throw new ErreurMetier(
           'CODE_RESERVATION_COLLISION',
           'Une erreur est survenue, veuillez reessayer.',
           HttpStatus.CONFLICT,
         );
       }
+      // Contrainte non reconnue (ex. forme de driverAdapterError modifiee
+      // par une future version) : on suppose une double reservation, de
+      // loin le cas le plus frequent — au pire l'utilisateur retente une
+      // action deja valide, jamais une erreur bloquante.
       throw new ErreurMetier(
         'RESERVATION_DEJA_ACTIVE',
         'Vous avez deja une reservation active pour cet evenement.',
@@ -225,5 +233,27 @@ export class ReservationsService {
       );
     }
     throw erreur;
+  }
+
+  /**
+   * Extrait le nom de la contrainte unique violee du message Postgres brut.
+   * Forme non documentee publiquement par Prisma (specifique a
+   * @prisma/adapter-pg), donc verifiee au runtime avant tout usage plutot
+   * que supposee — retourne undefined si la forme ne correspond pas.
+   */
+  private contrainteViolee(
+    meta: Prisma.PrismaClientKnownRequestError['meta'],
+  ): string | undefined {
+    const message = (
+      meta as
+        | { driverAdapterError?: { cause?: { originalMessage?: unknown } } }
+        | undefined
+    )?.driverAdapterError?.cause?.originalMessage;
+
+    if (typeof message !== 'string') return undefined;
+    if (message.includes('Reservation_code_key')) return 'Reservation_code_key';
+    if (message.includes('Reservation_active_unique'))
+      return 'Reservation_active_unique';
+    return undefined;
   }
 }
