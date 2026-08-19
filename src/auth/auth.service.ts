@@ -52,7 +52,10 @@ export class AuthService {
         },
       });
     } catch (erreur) {
-      throw this.convertirErreurUnicite(erreur);
+      // convertirErreurUnicite() retourne never (elle leve toujours en
+      // interne) : un throw devant serait redondant, TypeScript sait deja
+      // qu'aucun code apres cet appel n'est atteignable.
+      this.convertirErreurUnicite(erreur);
     }
 
     return this.construireReponse(utilisateur);
@@ -85,7 +88,7 @@ export class AuthService {
     // endpoint devient un moyen de savoir qui a un compte (regle de domaine).
     const reponse: ReponseGeneriqueDto = {
       message:
-        "Si un compte existe avec cette adresse, un email de reinitialisation a ete envoye.",
+        'Si un compte existe avec cette adresse, un email de reinitialisation a ete envoye.',
     };
 
     const utilisateur = await this.prisma.utilisateur.findUnique({
@@ -97,7 +100,10 @@ export class AuthService {
 
     const uneHeureAvant = new Date(Date.now() - 60 * 60 * 1000);
     const demandesRecentes = await this.prisma.tokenReinitialisation.count({
-      where: { utilisateurId: utilisateur.id, createdAt: { gt: uneHeureAvant } },
+      where: {
+        utilisateurId: utilisateur.id,
+        createdAt: { gt: uneHeureAvant },
+      },
     });
     if (demandesRecentes >= MAX_DEMANDES_PAR_HEURE) {
       // Throttle silencieux : meme reponse, rien n'est genere ni envoye.
@@ -143,9 +149,9 @@ export class AuthService {
   async reinitialiserMotDePasse(
     dto: ConfirmerReinitialisationDto,
   ): Promise<ReponseGeneriqueDto> {
-    const enregistrement = await this.prisma.tokenReinitialisation.findUnique(
-      { where: { tokenHash: this.hacherToken(dto.token) } },
-    );
+    const enregistrement = await this.prisma.tokenReinitialisation.findUnique({
+      where: { tokenHash: this.hacherToken(dto.token) },
+    });
 
     if (!enregistrement) {
       throw new ErreurMetier(

@@ -11,7 +11,11 @@ import type { NotificateurMotDePasse } from './notificateur-mot-de-passe.interfa
 export class NotificateurMotDePasseLogService implements NotificateurMotDePasse {
   private readonly logger = new Logger(NotificateurMotDePasseLogService.name);
 
-  async envoyerLienReinitialisation(destinataire: {
+  // Pas de async : cette implementation n'a rien a attendre (juste un log
+  // synchrone), contrairement a NotificateurMotDePasseBrevoService qui fait
+  // un vrai appel reseau — le Promise.resolve() explicite satisfait quand
+  // meme l'interface commune sans faire semblant d'etre asynchrone.
+  envoyerLienReinitialisation(destinataire: {
     email: string;
     nom: string;
     lien: string;
@@ -19,5 +23,6 @@ export class NotificateurMotDePasseLogService implements NotificateurMotDePasse 
     this.logger.log(
       `[DEV] Email de reinitialisation non envoye. Destinataire : ${destinataire.email} (${destinataire.nom}). Lien : ${destinataire.lien}`,
     );
+    return Promise.resolve();
   }
 }
