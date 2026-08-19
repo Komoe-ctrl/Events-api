@@ -1,6 +1,7 @@
-import { HttpStatus, Injectable } from '@nestjs/common';
+import { HttpStatus, Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
+import { createHash, randomBytes } from 'node:crypto';
 import { ErreurMetier } from '../common/exceptions/erreur-metier.exception';
 import {
   Prisma,
@@ -8,12 +9,25 @@ import {
   type Utilisateur,
 } from '../../generated/prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
+import { ConfirmerReinitialisationDto } from './dto/confirmer-reinitialisation.dto';
 import { ConnexionDto } from './dto/connexion.dto';
+import { DemandeReinitialisationDto } from './dto/demande-reinitialisation.dto';
 import { InscriptionDto } from './dto/inscription.dto';
 import { ReponseAuthDto } from './dto/reponse-auth.dto';
+import { ReponseGeneriqueDto } from './dto/reponse-generique.dto';
+
+// Duree de vie courte : assez pour ouvrir un email, pas assez pour qu'un
+// lien oublie dans une boite mail traine longtemps comme risque.
+const DUREE_VIE_TOKEN_MINUTES = 30;
+// Limitation des tentatives sur l'endpoint de demande (regle de domaine :
+// securite) : au-dela, la demande est silencieusement ignoree, mais la
+// reponse reste identique — sinon le throttling lui-meme fuite de l'info.
+const MAX_DEMANDES_PAR_HEURE = 3;
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
@@ -58,6 +72,117 @@ export class AuthService {
     }
 
     return this.construireReponse(utilisateur);
+  }
+
+  async demanderReinitialisation(
+    dto: DemandeReinitialisationDto,
+  ): Promise<ReponseGeneriqueDto> {
+    // Reponse strictement identique que l'email existe ou non : sinon cet
+    // endpoint devient un moyen de savoir qui a un compte (regle de domaine).
+    const reponse: ReponseGeneriqueDto = {
+      message:
+        "Si un compte existe avec cette adresse, un email de reinitialisation a ete envoye.",
+    };
+
+    const utilisateur = await this.prisma.utilisateur.findUnique({
+      where: { email: dto.email },
+    });
+    if (!utilisateur) {
+      return reponse;
+    }
+
+    const uneHeureAvant = new Date(Date.now() - 60 * 60 * 1000);
+    const demandesRecentes = await this.prisma.tokenReinitialisation.count({
+      where: { utilisateurId: utilisateur.id, createdAt: { gt: uneHeureAvant } },
+    });
+    if (demandesRecentes >= MAX_DEMANDES_PAR_HEURE) {
+      // Throttle silencieux : meme reponse, rien n'est genere ni envoye.
+      return reponse;
+    }
+
+    // Un seul jeton valide a la fois : la demande precedente est invalidee
+    // (expiree immediatement) plutot que de laisser plusieurs liens actifs
+    // en parallele. updateMany plutot que deleteMany : un delete effacerait
+    // la ligne avant le prochain count() ci-dessus, et la limitation des
+    // tentatives ne compterait plus jamais au-dela de 1-2 demandes — verifie
+    // empiriquement (5 demandes de suite sans aucun throttle) avant ce choix.
+    await this.prisma.tokenReinitialisation.updateMany({
+      where: {
+        utilisateurId: utilisateur.id,
+        utiliseLe: null,
+        expireLe: { gt: new Date() },
+      },
+      data: { expireLe: new Date() },
+    });
+
+    const tokenClair = randomBytes(32).toString('hex');
+    await this.prisma.tokenReinitialisation.create({
+      data: {
+        utilisateurId: utilisateur.id,
+        tokenHash: this.hacherToken(tokenClair),
+        expireLe: new Date(Date.now() + DUREE_VIE_TOKEN_MINUTES * 60 * 1000),
+      },
+    });
+
+    // Provisoire : remplace a l'etape 3 par l'interface d'envoi isolee.
+    // En attendant, le lien est ecrit dans les logs pour rester testable.
+    this.logger.log(
+      `Lien de reinitialisation pour ${utilisateur.email} (expire dans ${DUREE_VIE_TOKEN_MINUTES} min) : token=${tokenClair}`,
+    );
+
+    return reponse;
+  }
+
+  async reinitialiserMotDePasse(
+    dto: ConfirmerReinitialisationDto,
+  ): Promise<ReponseGeneriqueDto> {
+    const enregistrement = await this.prisma.tokenReinitialisation.findUnique(
+      { where: { tokenHash: this.hacherToken(dto.token) } },
+    );
+
+    if (!enregistrement) {
+      throw new ErreurMetier(
+        'TOKEN_INVALIDE',
+        'Ce lien de reinitialisation est invalide.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (enregistrement.utiliseLe !== null) {
+      throw new ErreurMetier(
+        'TOKEN_DEJA_UTILISE',
+        'Ce lien de reinitialisation a deja ete utilise.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (enregistrement.expireLe.getTime() < Date.now()) {
+      throw new ErreurMetier(
+        'TOKEN_EXPIRE',
+        'Ce lien de reinitialisation a expire. Demandes-en un nouveau.',
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+
+    const motDePasseHash = await argon2.hash(dto.nouveauMotDePasse);
+
+    // Transaction : le mot de passe change et le jeton est marque utilise
+    // ensemble, ou aucun des deux — jamais un jeton brule sans effet, ni un
+    // jeton reutilisable apres avoir deja servi.
+    await this.prisma.$transaction([
+      this.prisma.utilisateur.update({
+        where: { id: enregistrement.utilisateurId },
+        data: { motDePasseHash },
+      }),
+      this.prisma.tokenReinitialisation.update({
+        where: { id: enregistrement.id },
+        data: { utiliseLe: new Date() },
+      }),
+    ]);
+
+    return { message: 'Mot de passe reinitialise avec succes.' };
+  }
+
+  private hacherToken(token: string): string {
+    return createHash('sha256').update(token).digest('hex');
   }
 
   private construireReponse(utilisateur: Utilisateur): ReponseAuthDto {

@@ -28,10 +28,12 @@ export class InscriptionDto {
   @Matches(/^\+?[0-9\s-]{8,15}$/, { message: 'Numero de telephone invalide.' })
   telephone!: string;
 
-  @ApiPropertyOptional({ example: 'awa@example.com' })
-  @IsOptional()
+  // Obligatoire depuis l'ajout de la reinitialisation de mot de passe par
+  // email (regle de domaine) : sans email, aucun canal pour recuperer un
+  // compte perdu. Le telephone reste l'identifiant de connexion.
+  @ApiProperty({ example: 'awa@example.com' })
   @IsEmail({}, { message: 'Adresse email invalide.' })
-  email?: string;
+  email!: string;
 
   @ApiProperty({ minLength: 8, example: 'motdepasse123' })
   @IsString()
