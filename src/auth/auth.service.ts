@@ -1,4 +1,4 @@
-import { HttpStatus, Injectable, Logger } from '@nestjs/common';
+import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as argon2 from 'argon2';
 import { createHash, randomBytes } from 'node:crypto';
@@ -15,6 +15,10 @@ import { DemandeReinitialisationDto } from './dto/demande-reinitialisation.dto';
 import { InscriptionDto } from './dto/inscription.dto';
 import { ReponseAuthDto } from './dto/reponse-auth.dto';
 import { ReponseGeneriqueDto } from './dto/reponse-generique.dto';
+import {
+  NOTIFICATEUR_MOT_DE_PASSE,
+  type NotificateurMotDePasse,
+} from './notifications/notificateur-mot-de-passe.interface';
 
 // Duree de vie courte : assez pour ouvrir un email, pas assez pour qu'un
 // lien oublie dans une boite mail traine longtemps comme risque.
@@ -26,11 +30,11 @@ const MAX_DEMANDES_PAR_HEURE = 3;
 
 @Injectable()
 export class AuthService {
-  private readonly logger = new Logger(AuthService.name);
-
   constructor(
     private readonly prisma: PrismaService,
     private readonly jwtService: JwtService,
+    @Inject(NOTIFICATEUR_MOT_DE_PASSE)
+    private readonly notificateur: NotificateurMotDePasse,
   ) {}
 
   async inscription(dto: InscriptionDto): Promise<ReponseAuthDto> {
@@ -124,11 +128,14 @@ export class AuthService {
       },
     });
 
-    // Provisoire : remplace a l'etape 3 par l'interface d'envoi isolee.
-    // En attendant, le lien est ecrit dans les logs pour rester testable.
-    this.logger.log(
-      `Lien de reinitialisation pour ${utilisateur.email} (expire dans ${DUREE_VIE_TOKEN_MINUTES} min) : token=${tokenClair}`,
-    );
+    // AuthService ne sait pas si ce lien part par email ou (plus tard) par
+    // SMS, ni comment — seule l'implementation fournie par AuthModule le
+    // sait (regle de domaine : isolation de l'envoi).
+    await this.notificateur.envoyerLienReinitialisation({
+      email: utilisateur.email,
+      nom: utilisateur.nom,
+      lien: this.construireLienReinitialisation(tokenClair),
+    });
 
     return reponse;
   }
@@ -183,6 +190,13 @@ export class AuthService {
 
   private hacherToken(token: string): string {
     return createHash('sha256').update(token).digest('hex');
+  }
+
+  // Format provisoire : la cible reelle (deep link mobile vs page web
+  // intermediaire) est une decision cote app, hors perimetre de ce lot API.
+  private construireLienReinitialisation(tokenClair: string): string {
+    const base = process.env.APP_URL ?? 'http://localhost:8081';
+    return `${base}/reinitialiser-mot-de-passe?token=${tokenClair}`;
   }
 
   private construireReponse(utilisateur: Utilisateur): ReponseAuthDto {
