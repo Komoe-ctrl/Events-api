@@ -3,6 +3,7 @@ import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
+import { NotificateurMotDePasseBrevoService } from './notifications/notificateur-mot-de-passe-brevo.service';
 import { NotificateurMotDePasseLogService } from './notifications/notificateur-mot-de-passe-log.service';
 import { NOTIFICATEUR_MOT_DE_PASSE } from './notifications/notificateur-mot-de-passe.interface';
 import { JwtStrategy } from './strategies/jwt.strategy';
@@ -29,11 +30,16 @@ import { JwtStrategy } from './strategies/jwt.strategy';
   providers: [
     AuthService,
     JwtStrategy,
-    // Seule ligne a changer pour basculer sur un vrai fournisseur (email
-    // puis, plus tard, SMS) : AuthService ne connait que l'interface.
+    // Bascule automatique sur Brevo des que BREVO_API_KEY est configuree,
+    // y compris en prod si elle manque encore — jamais d'echec silencieux
+    // faute de cle, on retombe sur les logs plutot que de planter au
+    // demarrage. AuthService ne connait que l'interface, jamais ce choix.
     {
       provide: NOTIFICATEUR_MOT_DE_PASSE,
-      useClass: NotificateurMotDePasseLogService,
+      useFactory: () =>
+        process.env.BREVO_API_KEY
+          ? new NotificateurMotDePasseBrevoService()
+          : new NotificateurMotDePasseLogService(),
     },
   ],
 })
