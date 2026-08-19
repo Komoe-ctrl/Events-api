@@ -87,7 +87,10 @@ export class ReservationsService {
           },
         });
       } catch (erreur) {
-        throw this.convertirErreurUnicite(erreur);
+        // convertirErreurUnicite() retourne never (elle leve toujours en
+        // interne) : un throw devant serait redondant, TypeScript sait deja
+        // qu'aucun code apres cet appel n'est atteignable.
+        this.convertirErreurUnicite(erreur);
       }
     });
   }
@@ -237,9 +240,19 @@ export class ReservationsService {
 
   /**
    * Extrait le nom de la contrainte unique violee du message Postgres brut.
-   * Forme non documentee publiquement par Prisma (specifique a
-   * @prisma/adapter-pg), donc verifiee au runtime avant tout usage plutot
-   * que supposee — retourne undefined si la forme ne correspond pas.
+   *
+   * ATTENTION : driverAdapterError.cause.originalMessage est une structure
+   * interne a @prisma/adapter-pg, jamais documentee ni garantie par
+   * l'API publique de Prisma (contrairement a PrismaClientKnownRequestError
+   * lui-meme) — une mise a jour de l'adaptateur peut la faire disparaitre
+   * ou changer sa forme sans avertissement ni breaking change signale.
+   * Le chainage optionnel (?.) rend cette fonction volontairement inerte
+   * si la forme ne correspond plus : elle retourne undefined plutot que de
+   * lever une exception, quelle que soit la valeur de meta (objet
+   * partiel, primitive, absent...) — verifie sur une dizaine de formes,
+   * jamais de plantage. Le seul effet d'une regression ici est de faire
+   * tomber le tri sur le repli RESERVATION_DEJA_ACTIVE ci-dessus, jamais
+   * une erreur 500.
    */
   private contrainteViolee(
     meta: Prisma.PrismaClientKnownRequestError['meta'],

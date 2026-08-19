@@ -52,7 +52,10 @@ export class AuthService {
         },
       });
     } catch (erreur) {
-      throw this.convertirErreurUnicite(erreur);
+      // convertirErreurUnicite() retourne never (elle leve toujours en
+      // interne) : un throw devant serait redondant, TypeScript sait deja
+      // qu'aucun code apres cet appel n'est atteignable.
+      this.convertirErreurUnicite(erreur);
     }
 
     return this.construireReponse(utilisateur);
