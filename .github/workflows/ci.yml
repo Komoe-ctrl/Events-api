@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+    # Pas de service Postgres pour l'instant : aucune etape ici n'a besoin
+    # d'une base reellement joignable (prisma validate/generate ne font que
+    # lire le schema). A ajouter au lot 3 avec les tests e2e.
+    env:
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci_placeholder
+      JWT_SECRET: ci-placeholder-secret-jamais-utilise-en-production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - run: npm ci
+
+      - run: npx prisma generate
+
+      - run: npx prisma validate
+
+      - run: npx tsc --noEmit
+
+      - run: npm run lint:ci
+
+      - run: npm test
