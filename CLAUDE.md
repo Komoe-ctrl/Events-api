@@ -274,6 +274,23 @@ src/
 
 ---
 
+## Workflow Git
+
+- **Jamais de commit direct sur `main`.**
+- **Une branche par sujet**, créée depuis `main` à jour (`git checkout main
+  && git pull` avant chaque création), nommée `type/description-courte` :
+  `feat`, `fix`, `securite`, `chore`, `docs`, `test`.
+- **Commits au format Conventional Commits** (`feat:`, `fix:`, `chore:`,
+  `docs:`, `securite:`, `test:`…), rédigés en français.
+- **Une PR par branche**, ouverte avec `gh pr create` en remplissant le
+  template (`.github/pull_request_template.md`).
+- **Ne jamais merger soi-même une PR, ne jamais force-push, ne jamais
+  modifier la configuration de protection de branche.**
+- **S'arrêter après l'ouverture de la PR** et attendre la validation avant
+  de continuer.
+
+---
+
 ## Méthode de travail
 
 Je suis développeur fullstack et ce projet est le mien : je veux comprendre
