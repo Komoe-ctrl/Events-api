@@ -1,4 +1,5 @@
 import { Logger, ValidationPipe } from '@nestjs/common';
+import type { CustomOrigin } from '@nestjs/common/interfaces/external/cors-options.interface';
 import { NestFactory } from '@nestjs/core';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
@@ -13,13 +14,34 @@ try {
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // Necessaire pour Expo web (navigateur, soumis a CORS), pas pour les
-  // cibles natives (Android emulateur/telephone). Ouvert en dev ; a
-  // restreindre a des origines connues avant tout deploiement.
-  // TODO(deploiement) : restreindre via { origin: [...] } aux domaines reels
-  // (app web + admin) avant toute mise en production — releve lors de
-  // l'inventaire de confidentialite, actuellement ouvert a toute origine.
-  app.enableCors();
+  // CORS ne s'applique qu'aux navigateurs (Expo web) : le header Origin
+  // n'est envoye que par un navigateur, jamais par les cibles natives
+  // (Android/iOS) ni par un client serveur-a-serveur (curl, l'app mobile
+  // elle-meme hors web) — ces requetes continuent de passer sans etre
+  // concernees par la restriction ci-dessous.
+  // CORS_ORIGINS : liste blanche separee par des virgules, vide par defaut
+  // (aucune origine navigateur autorisee tant qu'elle n'est pas explicitement
+  // configuree). Releve lors de l'inventaire de confidentialite : le
+  // app.enableCors() precedent, sans restriction, etait ouvert a toute
+  // origine.
+  const originsAutorisees = (process.env.CORS_ORIGINS ?? '')
+    .split(',')
+    .map((origine) => origine.trim())
+    .filter((origine) => origine.length > 0);
+
+  const origin: CustomOrigin = (requestOrigin, callback) => {
+    if (!requestOrigin || originsAutorisees.includes(requestOrigin)) {
+      callback(null, true);
+      return;
+    }
+    // Pas d'erreur levee : on omet simplement les en-tetes CORS, le
+    // navigateur bloque alors la lecture de la reponse cote client.
+    // C'est le comportement standard du package cors — lever une erreur
+    // ici la ferait remonter comme une 500 generique via le filtre
+    // d'exception global, ce qui n'apporte rien de plus.
+    callback(null, false);
+  };
+  app.enableCors({ origin });
 
   app.setGlobalPrefix('api');
 
