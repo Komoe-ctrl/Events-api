@@ -298,21 +298,6 @@ async function main() {
       organisateurId: ibrahim.id,
       contactOrganisateur: ibrahim.telephone,
     },
-    {
-      titre: 'Idee de concert acoustique',
-      description: "Brouillon en cours de redaction, details du lieu et de la date a confirmer.",
-      categorie: CategorieEvenement.CONCERT,
-      commune: 'Plateau',
-      latitude: 5.318,
-      longitude: -4.022,
-      adresse: 'A definir',
-      dateDebut: dansNJours(45, 20),
-      prix: null,
-      capacite: null,
-      statut: StatutEvenement.BROUILLON,
-      organisateurId: aya.id,
-      contactOrganisateur: aya.telephone,
-    },
   ];
 
   for (const evenement of evenements) {

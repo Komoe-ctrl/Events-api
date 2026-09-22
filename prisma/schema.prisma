@@ -24,7 +24,6 @@ enum CategorieEvenement {
 }
 
 enum StatutEvenement {
-  BROUILLON
   EN_ATTENTE
   PUBLIE
   REFUSE
@@ -87,7 +86,7 @@ model Evenement {
   longitude           Float
   adresse             String
   commune             String
-  statut              StatutEvenement    @default(BROUILLON)
+  statut              StatutEvenement    @default(EN_ATTENTE)
   motifRefus          String?
   organisateurId      String
   contactOrganisateur String
