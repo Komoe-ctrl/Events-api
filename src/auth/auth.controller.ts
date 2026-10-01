@@ -1,5 +1,6 @@
 import { Body, Controller, HttpCode, HttpStatus, Post } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { ConfirmerReinitialisationDto } from './dto/confirmer-reinitialisation.dto';
 import { ConnexionDto } from './dto/connexion.dto';
@@ -8,12 +9,20 @@ import { InscriptionDto } from './dto/inscription.dto';
 import { ReponseAuthDto } from './dto/reponse-auth.dto';
 import { ReponseGeneriqueDto } from './dto/reponse-generique.dto';
 
+// 5 requetes/minute/IP sur les endpoints sensibles a l'abus automatise :
+// large pour un usage humain normal (meme en cas d'erreur de saisie repetee),
+// assez bas pour rendre un bruteforce ou une creation de comptes en masse
+// depuis une seule IP impraticable. Plus strict que la limite globale
+// (100/min, voir AppModule) qui couvre le reste de l'API.
+const LIMITE_AUTH_SENSIBLE = { default: { limit: 5, ttl: 60_000 } };
+
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService) {}
 
   @Post('inscription')
+  @Throttle(LIMITE_AUTH_SENSIBLE)
   @ApiOperation({ summary: 'Cree un compte participant ou organisateur' })
   @ApiOkResponse({ type: ReponseAuthDto })
   inscription(@Body() dto: InscriptionDto): Promise<ReponseAuthDto> {
@@ -22,6 +31,7 @@ export class AuthController {
 
   @Post('connexion')
   @HttpCode(HttpStatus.OK)
+  @Throttle(LIMITE_AUTH_SENSIBLE)
   @ApiOperation({
     summary: 'Authentifie un utilisateur par telephone + mot de passe',
   })
@@ -32,6 +42,7 @@ export class AuthController {
 
   @Post('mot-de-passe-oublie')
   @HttpCode(HttpStatus.OK)
+  @Throttle(LIMITE_AUTH_SENSIBLE)
   @ApiOperation({
     summary:
       'Demande un lien de reinitialisation de mot de passe par email. ' +
