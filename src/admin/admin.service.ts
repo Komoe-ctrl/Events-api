@@ -1,21 +1,32 @@
 import { HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { type Evenement, StatutEvenement } from '../../generated/prisma/client';
 import { ErreurMetier } from '../common/exceptions/erreur-metier.exception';
+import {
+  type AvecPlacesRestantes,
+  EvenementsService,
+} from '../evenements/evenements.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { ModererEvenementDto } from './dto/moderer-evenement.dto';
 
 @Injectable()
 export class AdminService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly evenementsService: EvenementsService,
+  ) {}
 
-  fileDeModeration(): Promise<Evenement[]> {
-    return this.prisma.evenement.findMany({
+  async fileDeModeration(): Promise<AvecPlacesRestantes<Evenement>[]> {
+    const evenements = await this.prisma.evenement.findMany({
       where: { statut: StatutEvenement.EN_ATTENTE },
       orderBy: { createdAt: 'asc' },
     });
+    return this.evenementsService.avecPlacesRestantes(evenements);
   }
 
-  async moderer(id: string, dto: ModererEvenementDto): Promise<Evenement> {
+  async moderer(
+    id: string,
+    dto: ModererEvenementDto,
+  ): Promise<AvecPlacesRestantes<Evenement>> {
     const evenement = await this.prisma.evenement.findUnique({ where: { id } });
     if (!evenement) {
       throw new NotFoundException('Evenement introuvable.');
@@ -35,7 +46,7 @@ export class AdminService {
       );
     }
 
-    return this.prisma.evenement.update({
+    const evenementModere = await this.prisma.evenement.update({
       where: { id },
       data: {
         statut:
@@ -45,5 +56,9 @@ export class AdminService {
         motifRefus: dto.statut === 'REFUSE' ? dto.motifRefus : null,
       },
     });
+    const [resultat] = await this.evenementsService.avecPlacesRestantes([
+      evenementModere,
+    ]);
+    return resultat;
   }
 }

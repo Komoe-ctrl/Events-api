@@ -25,7 +25,7 @@ export interface EvenementAvecDistance extends Evenement {
   distanceKm: number;
 }
 
-type AvecPlacesRestantes<T> = T & { placesRestantes: number | null };
+export type AvecPlacesRestantes<T> = T & { placesRestantes: number | null };
 
 @Injectable()
 export class EvenementsService {
@@ -74,8 +74,12 @@ export class EvenementsService {
    * (regle de domaine n.1) pour ne pas complexifier davantage cette requete
    * deja denses ; le cout supplementaire est un aggregat sur un nombre
    * d'identifiants deja borne par LIMITE_RESULTATS.
+   *
+   * Public : reutilise par AdminService pour que les evenements qu'il
+   * renvoie (file de moderation, moderation) aient exactement la meme forme
+   * que les endpoints evenements/* — un seul mapper, pas de logique dupliquee.
    */
-  private async avecPlacesRestantes<T extends Evenement>(
+  async avecPlacesRestantes<T extends Evenement>(
     evenements: T[],
   ): Promise<AvecPlacesRestantes<T>[]> {
     if (evenements.length === 0) {
@@ -160,15 +164,21 @@ export class EvenementsService {
     return resultat;
   }
 
-  mesEvenements(organisateurId: string): Promise<Evenement[]> {
-    return this.prisma.evenement.findMany({
+  async mesEvenements(
+    organisateurId: string,
+  ): Promise<AvecPlacesRestantes<Evenement>[]> {
+    const evenements = await this.prisma.evenement.findMany({
       where: { organisateurId },
       orderBy: { createdAt: 'desc' },
     });
+    return this.avecPlacesRestantes(evenements);
   }
 
-  creer(dto: CreerEvenementDto, organisateurId: string): Promise<Evenement> {
-    return this.prisma.evenement.create({
+  async creer(
+    dto: CreerEvenementDto,
+    organisateurId: string,
+  ): Promise<AvecPlacesRestantes<Evenement>> {
+    const evenement = await this.prisma.evenement.create({
       data: {
         titre: dto.titre,
         slug: genererSlug(dto.titre),
@@ -194,13 +204,15 @@ export class EvenementsService {
         statut: StatutEvenement.EN_ATTENTE,
       },
     });
+    const [resultat] = await this.avecPlacesRestantes([evenement]);
+    return resultat;
   }
 
   async modifier(
     id: string,
     dto: ModifierEvenementDto,
     utilisateurId: string,
-  ): Promise<Evenement> {
+  ): Promise<AvecPlacesRestantes<Evenement>> {
     const evenement = await this.prisma.evenement.findUnique({ where: { id } });
     if (!evenement) {
       throw new NotFoundException('Evenement introuvable.');
@@ -227,6 +239,11 @@ export class EvenementsService {
       donnees.statut = StatutEvenement.EN_ATTENTE;
     }
 
-    return this.prisma.evenement.update({ where: { id }, data: donnees });
+    const evenementMisAJour = await this.prisma.evenement.update({
+      where: { id },
+      data: donnees,
+    });
+    const [resultat] = await this.avecPlacesRestantes([evenementMisAJour]);
+    return resultat;
   }
 }
