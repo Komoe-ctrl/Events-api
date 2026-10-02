@@ -183,7 +183,12 @@ export class AuthService {
     await this.prisma.$transaction([
       this.prisma.utilisateur.update({
         where: { id: enregistrement.utilisateurId },
-        data: { motDePasseHash },
+        // versionToken incremente : invalide tous les JWT deja emis pour ce
+        // compte (mecanisme de revocation, voir jwt.strategy.ts et le
+        // commentaire sur le champ dans schema.prisma). Sans ca, un attaquant
+        // ayant vole un jeton avant la reinitialisation garderait un acces
+        // valide jusqu'a son expiration naturelle (30 jours).
+        data: { motDePasseHash, versionToken: { increment: 1 } },
       }),
       this.prisma.tokenReinitialisation.update({
         where: { id: enregistrement.id },
@@ -208,8 +213,8 @@ export class AuthService {
   private construireReponse(utilisateur: Utilisateur): ReponseAuthDto {
     const jeton = this.jwtService.sign({
       sub: utilisateur.id,
-      telephone: utilisateur.telephone,
       role: utilisateur.role,
+      versionToken: utilisateur.versionToken,
     });
 
     return {

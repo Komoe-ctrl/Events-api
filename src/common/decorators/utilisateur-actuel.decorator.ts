@@ -7,7 +7,6 @@ import type { RoleUtilisateur } from '../../../generated/prisma/client';
  */
 export interface UtilisateurAuthentifie {
   id: string;
-  telephone: string;
   role: RoleUtilisateur;
 }
 

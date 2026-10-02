@@ -42,6 +42,14 @@ model Utilisateur {
   email          String          @unique
   motDePasseHash String
   role           RoleUtilisateur @default(PARTICIPANT)
+  // Mecanisme de revocation de session : incremente a chaque
+  // reinitialisation de mot de passe. La strategie JWT (jwt.strategy.ts)
+  // compare cette valeur a celle incluse dans le payload du jeton presente,
+  // et refuse le jeton si elles different — tous les jetons emis avant
+  // l'increment sont alors invalides, meme encore dans leur duree de vie de
+  // 30 jours. Jamais serialise vers le mobile, ne fait pas partie du
+  // contrat de donnees partage (CLAUDE.md).
+  versionToken   Int             @default(0)
   createdAt      DateTime        @default(now())
 
   evenements             Evenement[]
