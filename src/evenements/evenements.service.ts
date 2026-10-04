@@ -19,7 +19,10 @@ import { RechercherEvenementsDto } from './dto/rechercher-evenements.dto';
 
 const KM_PAR_DEGRE_LATITUDE = 111.32;
 const RAYON_KM_DEFAUT = 25;
-const LIMITE_RESULTATS = 100;
+// Plafond reel impose par RechercherEvenementsDto.limite (@Max(100)) : la
+// ValidationPipe globale rejette toute valeur superieure avant d'atteindre
+// ce service, donc filtres.limite est deja borne a 100 ici.
+const LIMITE_RESULTATS_DEFAUT = 50;
 
 export interface EvenementAvecDistance extends Evenement {
   distanceKm: number;
@@ -61,7 +64,7 @@ export class EvenementsService {
         },
       },
       orderBy: { dateDebut: 'asc' },
-      take: LIMITE_RESULTATS,
+      take: filtres.limite ?? LIMITE_RESULTATS_DEFAUT,
     });
     return this.avecPlacesRestantes(resultats);
   }
@@ -129,6 +132,7 @@ export class EvenementsService {
     const categorie = filtres.categorie ?? null;
     const dateMin = filtres.dateMin ?? null;
     const dateMax = filtres.dateMax ?? null;
+    const limite = filtres.limite ?? LIMITE_RESULTATS_DEFAUT;
 
     return this.prisma.$queryRaw<EvenementAvecDistance[]>`
       SELECT * FROM (
@@ -149,7 +153,7 @@ export class EvenementsService {
       ) sous
       WHERE sous."distanceKm" <= ${rayonKm}
       ORDER BY sous."distanceKm" ASC
-      LIMIT ${LIMITE_RESULTATS}
+      LIMIT ${limite}
     `;
   }
 
