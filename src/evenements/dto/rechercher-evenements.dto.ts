@@ -3,6 +3,7 @@ import { Type } from 'class-transformer';
 import {
   IsIn,
   IsISO8601,
+  IsInt,
   IsLatitude,
   IsLongitude,
   IsNumber,
@@ -52,4 +53,15 @@ export class RechercherEvenementsDto {
   @IsOptional()
   @IsISO8601()
   dateMax?: string;
+
+  @ApiPropertyOptional({
+    default: 50,
+    description: 'Nombre maximum de resultats (maximum 100)',
+  })
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @IsPositive()
+  @Max(100, { message: 'La limite ne peut pas depasser 100.' })
+  limite?: number;
 }
