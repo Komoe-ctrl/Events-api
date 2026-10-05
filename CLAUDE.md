@@ -248,6 +248,76 @@ src/
   types/                 modèles de données
 ```
 
+### Système de design
+
+`tailwind.config.js` est la **source unique de vérité** pour les couleurs,
+tailles de police et arrondis. **Aucune valeur de couleur, d'espacement,
+d'arrondi ou de taille en dur dans un écran** — toujours via une classe
+NativeWind référençant un token. Une couleur hex (`color="#..."`) ne se
+justifie que pour les props qui n'acceptent pas de classe (`ActivityIndicator`,
+icônes `Ionicons`) — et doit alors reprendre exactement un token existant,
+jamais une valeur inventée sur le moment (erreur corrigée en 2026-10 :
+`#D85314` utilisé une fois au lieu de `brand.700`/`#B84800` partout ailleurs).
+
+**Tokens de couleur** (voir commentaires dans `tailwind.config.js` pour le
+détail) :
+
+- `brand` (50/100/500/600/700) — orange taxi d'Abidjan, couleur de marque.
+  `brand-500` pour les actions primaires, jamais `brand-600`/`700` en fond
+  de bouton (réservés aux variantes pressées/texte).
+- `accent` (DEFAULT + `ink`) — jaune signal, réservé aux accents ponctuels
+  (prix, badges). Jamais en fond de grande surface, jamais pour un statut
+  (voir plus bas, rôle distinct des tokens sémantiques).
+- `ink` (DEFAULT/`muted`/`faint`), `surface` (DEFAULT/`sunken`), `line` —
+  texte, fonds, séparateurs.
+- `succes` / `erreur` / `attention` / `info` (chacun DEFAULT/`ink`/`border`)
+  — **tokens sémantiques d'état** (statut d'un événement, résultat d'un
+  scan...), jamais pour décorer. Distincts de `accent`. Avant ces tokens,
+  chaque écran recomposait sa propre nuance de rouge/vert/bleu/ambre
+  Tailwind — jusqu'à trois verts différents pour le même "succès" selon
+  l'écran. `fond`→`DEFAULT`, texte lisible→`ink`, bordure de carte→`border`.
+
+**Typographie** : `font-display` (Anton) + `text-display-lg/display/display-sm`
+pour tout ce qui porte le caractère "affiche" (titres d'événement, titres
+d'écran) ; `text-label` pour les étiquettes majuscules courtes (catégorie,
+prix). Le reste du corps de texte utilise l'échelle Tailwind standard
+(`text-sm`, `text-base`...). Poids : **`font-medium`** est le poids
+d'emphase standard partout (titres de carte, boutons, labels) —
+`font-semibold` n'est pas utilisé actuellement, à réserver si un niveau
+d'emphase supérieur devient nécessaire, pas une alternative interchangeable
+à `font-medium`.
+
+**Arrondis** : `rounded-card` (3px, cartes/boutons) et `rounded-chip`
+(2px, badges/étiquettes) sont les tokens actifs — appliqués progressivement
+écran par écran (voir commentaire dans `tailwind.config.js`), pas encore
+partout. `rounded-full` reste légitime pour les éléments réellement ronds
+(pastille de statut, bouton +/-).
+
+**Espacement** : pas de nouvelle échelle dans `tailwind.config.js` (l'échelle
+Tailwind par défaut suffit), mais une convention resserrée à respecter pour
+les nouveaux écrans ou au moment de migrer un écran existant (étape 5) :
+
+- **`p-4` est le padding de carte canonique** (ligne de liste : réservation,
+  événement, inscrit...). Avant consolidation, `p-3`/`p-4`/`p-5`/`p-6`
+  étaient utilisés indifféremment pour ce même rôle.
+- `p-6` reste réservé au padding de conteneur d'écran complet
+  (`contentContainerClassName` d'un `ScrollView`/liste), un rôle différent —
+  pas à utiliser pour une carte interne.
+- `py-3` est déjà la convention de facto pour la hauteur verticale d'un
+  bouton pleine largeur — à garder telle quelle, ne pas introduire une
+  nouvelle valeur pour ce rôle.
+- Éviter les valeurs isolées à une seule occurrence (ex. `py-3.5`, `mt-16`) :
+  si une nouvelle valeur semble nécessaire, vérifier d'abord qu'aucun token
+  existant ne convient.
+
+**Mode sombre** : structure prête (tous les usages passent déjà par des
+tokens sémantiques nommés, pas de couleur en dur dans le flux normal), mais
+**non implémenté**. Ne pas ajouter de logique `dark:`/`useColorScheme` sans
+en discuter d'abord — le coût réel dépasse la redéfinition des couleurs
+(props `color=` hex sur les composants natifs qui n'acceptent pas de classe,
+`StatusBar style` actuellement figé par écran, palette "surface" chaude à
+repenser pour un fond sombre plutôt qu'inverser naïvement).
+
 ### Règles
 
 - **`app/` ne contient que des routes.** Tout fichier utilitaire placé là
