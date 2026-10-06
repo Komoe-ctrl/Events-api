@@ -389,6 +389,19 @@ correspondent à un endpoint backend existant et complet.
    dans la liste des endpoints autorisés du `CLAUDE.md`. Ajout légitime
    (fonctionnalité réelle et complète), mais le document de contrat n'a pas
    été mis à jour en conséquence.
+5. **`evenement` absent des réponses de mutation de `Reservation`.** Même
+   famille de problème que le point 2 ci-dessus (`placesRestantes`), côté
+   réservations cette fois : `creerReservation`, `annulerReservation` et
+   `validerReservation` renvoient le type Prisma brut `Reservation`, sans
+   la relation `evenement` imbriquée — alors que les endpoints de lecture
+   (`GET /moi/reservations`) la renvoient via `ReservationPubliqueDto`.
+   Conséquence concrète depuis l'ajout de `contactOrganisateur` exposé
+   conditionnellement sur cette relation (statut CONFIRMEE/UTILISEE) : un
+   écran qui consommerait directement le retour d'une mutation plutôt que
+   de passer par `/moi/reservations` ne verrait ni l'événement imbriqué ni
+   ce contact. Sans conséquence aujourd'hui pour la même raison que le
+   point 2 (invalidation + refetch côté mobile), mais latent de la même
+   façon. Non corrigé pour l'instant — dette connue, pas un bug actif.
 
 ---
 
@@ -422,6 +435,10 @@ correspondent à un endpoint backend existant et complet.
   projet.
 - Réponses de mutation (`Evenement` brut) incohérentes avec les réponses de
   lecture (`EvenementPublicDto`) — cf. Partie C.4.2.
+- Réponses de mutation de `Reservation` (`creerReservation`,
+  `annulerReservation`, `validerReservation`) sans la relation `evenement`
+  imbriquée, contrairement à `GET /moi/reservations` — même famille que le
+  point ci-dessus, côté réservations. Cf. Partie C.4.5.
 
 ### Mineur
 

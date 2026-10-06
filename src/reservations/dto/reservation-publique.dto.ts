@@ -8,6 +8,12 @@ export class EvenementResumeDto {
   @ApiProperty() dateDebut!: Date;
   @ApiProperty() commune!: string;
   @ApiProperty() adresse!: string;
+
+  @ApiPropertyOptional({
+    description:
+      "Contact de l'organisateur, fourni uniquement lorsque la reservation associee est au statut CONFIRMEE ou UTILISEE. Absent (et non vide) pour toute autre reservation.",
+  })
+  contactOrganisateur?: string;
 }
 
 export class ReservationPubliqueDto {

@@ -186,8 +186,8 @@ export class ReservationsService {
     });
   }
 
-  mesReservations(utilisateurId: string) {
-    return this.prisma.reservation.findMany({
+  async mesReservations(utilisateurId: string) {
+    const reservations = await this.prisma.reservation.findMany({
       where: { utilisateurId },
       orderBy: { createdAt: 'desc' },
       include: {
@@ -199,10 +199,29 @@ export class ReservationsService {
             dateDebut: true,
             commune: true,
             adresse: true,
+            contactOrganisateur: true,
           },
         },
       },
     });
+
+    // Le contact de l'organisateur n'est expose que pour une reservation
+    // active (CONFIRMEE ou UTILISEE) : regle appliquee ici, cote serveur —
+    // pas un masquage a l'affichage cote mobile. Une reservation ANNULEE ne
+    // doit jamais faire apparaitre ce champ dans la reponse reseau elle-meme
+    // (sans quoi n'importe qui inspectant le trafic verrait quand meme le
+    // contact d'un organisateur pour une reservation qu'on a annulee).
+    return reservations.map((reservation) => ({
+      ...reservation,
+      evenement: {
+        ...reservation.evenement,
+        contactOrganisateur:
+          reservation.statut === StatutReservation.CONFIRMEE ||
+          reservation.statut === StatutReservation.UTILISEE
+            ? reservation.evenement.contactOrganisateur
+            : undefined,
+      },
+    }));
   }
 
   private convertirErreurUnicite(erreur: unknown): never {
