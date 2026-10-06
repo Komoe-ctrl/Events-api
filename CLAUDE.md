@@ -306,6 +306,10 @@ les nouveaux écrans ou au moment de migrer un écran existant (étape 5) :
 - `py-3` est déjà la convention de facto pour la hauteur verticale d'un
   bouton pleine largeur — à garder telle quelle, ne pas introduire une
   nouvelle valeur pour ce rôle.
+- `p-5` : troisième rôle légitime, distinct des deux précédents — le
+  panneau de texte sous une image "hero" qui saigne pleine largeur sans
+  padding (fiche événement, détail modération). Ni une carte (`p-4`), ni
+  un conteneur de défilement complet (`p-6`), donc pas une incohérence.
 - Éviter les valeurs isolées à une seule occurrence (ex. `py-3.5`, `mt-16`) :
   si une nouvelle valeur semble nécessaire, vérifier d'abord qu'aucun token
   existant ne convient.
