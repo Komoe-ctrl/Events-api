@@ -9,11 +9,24 @@ on:
 jobs:
   api:
     runs-on: ubuntu-latest
-    # Pas de service Postgres pour l'instant : aucune etape ici n'a besoin
-    # d'une base reellement joignable (prisma validate/generate ne font que
-    # lire le schema). A ajouter au lot 3 avec les tests e2e.
+    # Service Postgres dedie à la suite e2e (lot 4) — jamais partage avec
+    # une base de dev/prod, tronque entre chaque test (test/helpers/db.ts).
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     env:
-      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci_placeholder
+      DATABASE_URL: postgresql://ci:ci@localhost:5432/ci_test
       JWT_SECRET: ci-placeholder-secret-jamais-utilise-en-production
     steps:
       - uses: actions/checkout@v4
@@ -34,3 +47,5 @@ jobs:
       - run: npm run lint:ci
 
       - run: npm test
+
+      - run: npm run test:e2e
