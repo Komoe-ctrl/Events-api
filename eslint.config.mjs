@@ -32,4 +32,18 @@ export default tseslint.config(
       "prettier/prettier": ["error", { endOfLine: "auto" }],
     },
   },
+  {
+    // supertest type `response.body` en `any` : chaque acces (.statut,
+    // .erreur.code...) declenche no-unsafe-member-access. Caster a chaque
+    // site d'assertion dans chaque fichier *.e2e-spec.ts n'apporterait
+    // aucune securite reelle (le corps vient du reseau, jamais verifie
+    // statiquement de toute facon) pour un cout de lecture certain — meme
+    // logique que les deux derogations ci-dessus, limitee aux specs e2e.
+    files: ['test/**/*.e2e-spec.ts'],
+    rules: {
+      '@typescript-eslint/no-unsafe-member-access': 'off',
+      '@typescript-eslint/no-unsafe-assignment': 'off',
+      '@typescript-eslint/no-unsafe-call': 'off',
+    },
+  },
 );
