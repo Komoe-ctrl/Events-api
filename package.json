@@ -1,8 +1,8 @@
 {
   "name": "alentour-api",
   "version": "0.0.1",
-  "description": "",
-  "author": "",
+  "description": "API NestJS pour Alentour : decouverte, publication et reservation d'evenements a Abidjan.",
+  "author": "Komoe Komoe Emile <komoelogique@gmail.com>",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {
