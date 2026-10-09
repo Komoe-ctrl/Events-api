@@ -1,98 +1,105 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Alentour — API
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+API NestJS pour Alentour, application mobile de découverte, publication et
+réservation d'événements à Abidjan (Côte d'Ivoire). Authentification par
+téléphone, recherche d'événements géolocalisée, réservations avec gestion de
+capacité, modération par un rôle `ADMIN`.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+Le contrat de données complet (modèle canonique, endpoints, règles de
+domaine, format d'erreur) vit dans [`CLAUDE.md`](./CLAUDE.md) — fichier
+identique au dépôt `alentour` (application mobile), qui consomme cette API.
+Pour un état des lieux détaillé du projet (couverture fonctionnelle, dette
+technique connue), voir [`docs/ETAT_DES_LIEUX.md`](./docs/ETAT_DES_LIEUX.md).
 
-## Description
+## Prérequis
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- Node.js 22 ou plus récent
+- PostgreSQL (une instance standard, sans extension — le projet n'utilise
+  pas PostGIS, voir la règle de domaine n.2 dans `CLAUDE.md`)
+- Deux bases distinctes : une pour le développement, une pour les tests
+  e2e (cette dernière est entièrement tronquée entre chaque test — ne
+  jamais faire pointer la configuration de test vers une base contenant
+  de vraies données, voir `.env.test.example`)
 
-## Project setup
+## Installation
 
 ```bash
-$ npm install
+npm install
+cp .env.example .env
+# completer .env (voir "Variables d'environnement" ci-dessous)
+npx prisma migrate deploy
+npm run seed            # optionnel : peuple la base avec des donnees de demo
+npm run start:dev
 ```
 
-## Compile and run the project
+L'API est alors disponible sur `http://localhost:3000/api`, et sa
+documentation interactive (Swagger) sur `http://localhost:3000/docs`.
+
+## Variables d'environnement
+
+Voir [`.env.example`](./.env.example) pour le modèle complet, commenté.
+Résumé :
+
+| Variable | Obligatoire | Rôle |
+| --- | --- | --- |
+| `DATABASE_URL` | Oui | Connexion PostgreSQL (dev/prod) |
+| `JWT_SECRET` | Oui | Secret de signature des jetons d'authentification |
+| `APP_URL` | Non | Base du lien envoyé par email pour la réinitialisation de mot de passe |
+| `BREVO_API_KEY` | Non | Envoi réel des emails via Brevo. Non définie : le lien de réinitialisation est simplement journalisé (comportement par défaut en dev) |
+| `BREVO_EXPEDITEUR_EMAIL` / `BREVO_EXPEDITEUR_NOM` | Non | Expéditeur des emails envoyés via Brevo |
+| `CORS_ORIGINS` | Non | Origines navigateur autorisées (séparées par des virgules). Vide par défaut : aucune origine navigateur autorisée — ne concerne que les clients web (Expo web), pas les cibles natives |
+
+Pour les tests e2e, voir [`.env.test.example`](./.env.test.example) — modèle
+à copier en `.env.test.local` (ignoré par git), avec une base PostgreSQL
+dédiée et distincte de celle du développement.
+
+## Commandes
 
 ```bash
-# development
-$ npm run start
+npm run start:dev        # serveur de developpement (watch mode)
+npm run start:prod       # lance le build de production (dist/main.js)
+npm run build            # compile en dist/
 
-# watch mode
-$ npm run start:dev
+npx prisma migrate dev   # cree et applique une migration
+npx prisma studio        # inspecte la base graphiquement
+npm run seed             # peuple la base de developpement avec des donnees de demo
 
-# production mode
-$ npm run start:prod
+npx tsc --noEmit         # verification de types, doit passer avant tout commit
+npm run lint             # eslint --fix
+npm run lint:ci          # eslint sans correction automatique (utilise en CI)
+
+npm run test             # tests unitaires (Jest)
+npm run test:e2e         # tests e2e (Jest + supertest, base de test dediee — voir ci-dessus)
 ```
 
-## Run tests
+## Architecture
 
-```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+```text
+src/
+  main.ts               Bootstrap : ValidationPipe global, filtre d'exception, Swagger
+  app.module.ts
+  prisma/                PrismaModule global + PrismaService (Prisma 7, adapter pg)
+  common/
+    filters/             Filtre d'exception produisant le format d'erreur unique
+    guards/               JwtAuthGuard, RolesGuard, throttler personnalise
+    decorators/           @UtilisateurActuel, @Roles
+  auth/                  Inscription, connexion, reinitialisation de mot de passe, revocation de session
+  evenements/            Recherche geolocalisee (SQL, formule de haversine), publication, edition
+  reservations/          Reservation avec transaction + verrou, annulation, scan a l'entree
+  admin/                 File de moderation, publication/refus d'un evenement
+test/
+  helpers/               Fixtures et bootstrap d'application partages par les suites e2e
+  *.e2e-spec.ts          Suites e2e (infrastructure, reservations, auth/permissions, erreurs)
 ```
 
-## Deployment
+Chaque module suit la même structure : un contrôleur mince (reçoit un DTO
+validé, appelle un service, retourne le résultat), un service qui porte
+toute la logique métier, des DTO décorés pour Swagger. Détail complet des
+règles de domaine et du modèle de données dans
+[`CLAUDE.md`](./CLAUDE.md).
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+## Documentation API
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
-
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
-
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
-
-## Resources
-
-Check out a few resources that may come in handy when working with NestJS:
-
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
-
-## Support
-
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
-
-## Stay in touch
-
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
-
-## License
-
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+La documentation OpenAPI (Swagger), générée depuis les décorateurs des DTO
+et contrôleurs, est le contrat officiel consommé par l'application mobile.
+Disponible sur `/docs` une fois le serveur lancé.
